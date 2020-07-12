@@ -1,30 +1,29 @@
 package eu.acme.demo;
 
+import static org.hamcrest.CoreMatchers.is;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.acme.demo.domain.Order;
 import eu.acme.demo.domain.enums.OrderStatus;
 import eu.acme.demo.repository.OrderRepository;
 import eu.acme.demo.web.dto.OrderDto;
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
+import java.util.UUID;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
-import static org.mockito.Mockito.when;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import org.junit.runner.RunWith;
 import org.springframework.test.context.junit4.SpringRunner;
-
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -36,63 +35,120 @@ class OrderAPITests {
 
     @Autowired
     private ObjectMapper objectMapper;
-    
-    @MockBean
-    private OrderRepository mockRepository;
 
-       
+    @Autowired
+    private OrderRepository orderRepository;
+
+        
     @Test
     void testOrderAPI() throws Exception {
 
         //TODO: submit order request
         // 1. create order request
+        Order order = new Order("04502", "AAAAAbbA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
+        
         // 2. convert to json string using Jackson Object Mapper
+            String jsonString = objectMapper.writeValueAsString(order);
+            
         // 3. set json string to content param
-        MvcResult orderResult = this.mockMvc.perform(post("http://api.okto-demo.eu/orders").
+        MvcResult orderResult = this.mockMvc.perform(post("http://api.okto-demo.eu/orders")
                 //                content(orderRequestAsString)
-                contentType("application/json")
+                .content(jsonString)
+                .contentType("application/json")
                 .accept("application/json"))
                 .andExpect(status().isOk())
                 .andReturn();
 
         OrderDto orderDto;
-        // TODO: retrieve order dto from response
-        // convert orderResult.getResponse().getContentAsString() to OrderDto using Jackson Object Mapper
-        // make sure OrderDto contains correct data
-
-    }
-
-    
-    void testOrderDoubleSubmission() {
-        //TODO: write a test to trigger validation error when submit the same order twice (same client reference code)
-    }
-
-     @Test
-    void testFetchAllOrders() throws Exception{
-        //TODO: create 2 orders (by directly saving to database) and then invoke API call to fetch all orders
-        // check that response contains 2 orders
-
-        List<Order> orders = Arrays.asList(
-                new Order("002", "AAAAAA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED),
-                new Order("001", "BBBBBBB", BigDecimal.valueOf(500.23), 13, OrderStatus.SUBMITTED));
-
-        when(mockRepository.findAll()).thenReturn(orders);
+        
+        
+        //TODO: retrieve order dto from response
+        String jsonStringToObject = orderResult.getResponse().getContentAsString();
+        
+        //convert orderResult.getResponse().getContentAsString() to OrderDto using Jackson Object Mapper
+        orderDto = objectMapper.readValue(jsonStringToObject, OrderDto.class);
+        
+        //make sure OrderDto contains correct data
+        assertEquals(order.getClientReferenceCode(), orderDto.getClientReferenceCode());
+        assertEquals(order.getDescription(), orderDto.getDescription());
+        assertEquals(order.getItemCount(), orderDto.getItemCount());
+        assertEquals(order.getItemTotalAmount(), orderDto.getTotalAmount());
+        assertEquals(order.getStatus(), orderDto.getStatus());
         
 
-         mockMvc.perform(get("/orders"))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)));
-         
-         verify(mockRepository, times(1)).findAll();
     }
 
     
     @Test
-    void testFetchCertainOrder() throws Exception{
+    void testOrderDoubleSubmission() throws Exception {
+        //TODO: write a test to trigger validation error when submit the same order twice (same client reference code)
+        Order order = new Order();
+        order.setClientReferenceCode("88675");
+        order.setDescription("415fefd");
+        order.setItemCount(3);
+        order.setItemTotalAmount(BigDecimal.valueOf(35));
+        order.setStatus(OrderStatus.valueOf("UNDER_PROCESS"));
+        orderRepository.save(order);
+        
+        String jsonAsString = objectMapper.writeValueAsString(order);
+        
+        mockMvc.perform(post("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonAsString)      // .content("{\"clientReferenceCode\": \"88675\" , \"description\" : \"415fefd\", \"itemTotalAmount\": 35 , \"itemCount\": 3 , \"status\": \"UNDER_PROCESS\"}")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+    
+  
+    @Test
+    void testFetchAllOrders() throws Exception {
+        //TODO: create 2 orders (by directly saving to database) and then invoke API call to fetch all orders
+        // check that response contains 2 orders
+
+        Order o1 = new Order("002", "AAAAAA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
+        orderRepository.saveAndFlush(o1);
+        Order o2 = new Order("001", "BBBBBBB", BigDecimal.valueOf(500.23), 13, OrderStatus.SUBMITTED);
+        orderRepository.saveAndFlush(o2);
+
+        mockMvc.perform(get("/orders").contentType(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+
+    }
+
+    @Test
+    void testFetchCertainOrder() throws Exception {
         //TODO: create 1 order (by directly saving to database) and then invoke API call to fetch order
         // check response contains the correct order
+        //         String clientReferenceCode, String description, BigDecimal itemTotalAmount, int itemCount, OrderStatus status
         
-        //TODO: write one more test to check that when an order not exists, server responds with http 400
+          Order o1 = new Order("002", "AAAAAA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
+        orderRepository.saveAndFlush(o1);
+        UUID newId = o1.getId();
+        
+        mockMvc.perform(get("/orders/" + newId.toString()))
+                .andDo(print())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(newId.toString())))
+                .andExpect(jsonPath("$.clientReferenceCode", is("002")))
+                .andExpect(jsonPath("$.description", is("AAAAAA")))
+                .andExpect(jsonPath("$.totalAmount", is(100.23)))
+                .andExpect(jsonPath("$.itemCount", is(3)))
+                .andExpect(jsonPath("$.status", is("PROCESSED")));
+ 
     }
+    
+    
+    @Test
+    void testFetchOrdersDoesNotExist() throws Exception {
+        //TODO: write one more test to check that when an order not exists, server responds with http 400
+        
+        mockMvc.perform(get("/orders/123") 
+          .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isBadRequest());
+    }
+    
 }

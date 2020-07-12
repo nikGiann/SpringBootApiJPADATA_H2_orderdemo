@@ -45,7 +45,8 @@ public class OrderAPI {
                                             : new ArrayList<>();
         return orderLiteDtos;
     }
-
+    
+    
     @GetMapping("/{orderId}")
     public OrderDto fetchOrder(@PathVariable UUID orderId){
         //TODO: fetch specific order from DB
@@ -70,8 +71,7 @@ public class OrderAPI {
         //TODO: submit a new order
         // if client reference code already exist then return an HTTP 400 (bad request) with a proper payload that contains an error code and an error message
         List<Order> orderList = orderRepository.findByClientReferenceCode(orderRequest.getClientReferenceCode());
-        if(orderList!=null && orderList.size()>0)
-            
+        if(orderList!=null && orderList.size()>0)            
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order already exists");
 
         Order order = new Order();

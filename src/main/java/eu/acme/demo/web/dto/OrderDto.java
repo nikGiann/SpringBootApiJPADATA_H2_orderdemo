@@ -6,7 +6,11 @@ import java.util.List;
 public class OrderDto extends OrderLiteDto {
 
     private List<OrderItemDto> orderItems;
+
+    public OrderDto() {
+    }
     
+        
     public OrderDto(Order order){
         super(order);
     }

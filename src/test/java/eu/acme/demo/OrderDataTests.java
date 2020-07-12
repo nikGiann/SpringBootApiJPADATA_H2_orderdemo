@@ -35,6 +35,7 @@ public class OrderDataTests {
         Assert.isTrue(!orderRepository.findById(UUID.randomUUID()).isPresent(), "non existing order found");
 
         //TODO: add tests for order items
+        
     }
 
 }
