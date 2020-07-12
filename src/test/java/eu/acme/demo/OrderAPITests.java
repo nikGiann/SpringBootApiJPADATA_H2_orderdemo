@@ -45,7 +45,7 @@ class OrderAPITests {
 
         //TODO: submit order request
         // 1. create order request
-        Order order = new Order("04502", "AAAAAbbA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
+        Order order = new Order("111111", "Test the Test", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
         
         // 2. convert to json string using Jackson Object Mapper
             String jsonString = objectMapper.writeValueAsString(order);
@@ -83,8 +83,8 @@ class OrderAPITests {
     void testOrderDoubleSubmission() throws Exception {
         //TODO: write a test to trigger validation error when submit the same order twice (same client reference code)
         Order order = new Order();
-        order.setClientReferenceCode("88675");
-        order.setDescription("415fefd");
+        order.setClientReferenceCode("111111");
+        order.setDescription("Test the Test");
         order.setItemCount(3);
         order.setItemTotalAmount(BigDecimal.valueOf(35));
         order.setStatus(OrderStatus.valueOf("UNDER_PROCESS"));
@@ -94,7 +94,7 @@ class OrderAPITests {
         
         mockMvc.perform(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonAsString)      // .content("{\"clientReferenceCode\": \"88675\" , \"description\" : \"415fefd\", \"itemTotalAmount\": 35 , \"itemCount\": 3 , \"status\": \"UNDER_PROCESS\"}")
+                .content(jsonAsString)      // .content("{\"clientReferenceCode\": \"111111\" , \"description\" : \"Test the Test\", \"itemTotalAmount\": 35 , \"itemCount\": 3 , \"status\": \"UNDER_PROCESS\"}")
                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
@@ -105,9 +105,9 @@ class OrderAPITests {
         //TODO: create 2 orders (by directly saving to database) and then invoke API call to fetch all orders
         // check that response contains 2 orders
 
-        Order o1 = new Order("002", "AAAAAA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
+        Order o1 = new Order("002", "Test the Test", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
         orderRepository.saveAndFlush(o1);
-        Order o2 = new Order("001", "BBBBBBB", BigDecimal.valueOf(500.23), 13, OrderStatus.SUBMITTED);
+        Order o2 = new Order("001", "Testing the Test", BigDecimal.valueOf(500.23), 13, OrderStatus.SUBMITTED);
         orderRepository.saveAndFlush(o2);
 
         mockMvc.perform(get("/orders").contentType(MediaType.APPLICATION_JSON))
@@ -124,7 +124,7 @@ class OrderAPITests {
         // check response contains the correct order
         //         String clientReferenceCode, String description, BigDecimal itemTotalAmount, int itemCount, OrderStatus status
         
-          Order o1 = new Order("002", "AAAAAA", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
+          Order o1 = new Order("002", "Test the Test", BigDecimal.valueOf(100.23), 3, OrderStatus.PROCESSED);
         orderRepository.saveAndFlush(o1);
         UUID newId = o1.getId();
         
@@ -134,7 +134,7 @@ class OrderAPITests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(newId.toString())))
                 .andExpect(jsonPath("$.clientReferenceCode", is("002")))
-                .andExpect(jsonPath("$.description", is("AAAAAA")))
+                .andExpect(jsonPath("$.description", is("Test the Test")))
                 .andExpect(jsonPath("$.totalAmount", is(100.23)))
                 .andExpect(jsonPath("$.itemCount", is(3)))
                 .andExpect(jsonPath("$.status", is("PROCESSED")));
@@ -146,7 +146,7 @@ class OrderAPITests {
     void testFetchOrdersDoesNotExist() throws Exception {
         //TODO: write one more test to check that when an order not exists, server responds with http 400
         
-        mockMvc.perform(get("/orders/123") 
+        mockMvc.perform(get("/orders/123456789") 
           .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isBadRequest());
     }
